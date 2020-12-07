@@ -1,9 +1,9 @@
 # Graph: Dependency and Lifecycle Management
 
 [Dependency injection](https://en.wikipedia.org/wiki/Dependency_injection) is a technique
-to "magically" satisfy _dependencies_ within an application, reducing the mental overhead of the programmer and ensuring the dependencies can remain _loosely coupled_.
+to "magically" satisfy _dependencies_ within an application, reducing the mental overhead for programmer and ensuring the dependencies remain _loosely coupled_.
 
-This module for the _golang_  provides one implementation of such magic, with the following aims:
+This module for __Go__  provides one implementation of such magic, with the following aims:
 
   * Provide dependency injection for `struct` fields;
   * Explicit _lifecycle management_ for an application;
@@ -13,12 +13,12 @@ This module for the _golang_  provides one implementation of such magic, with th
   * A framework for developing tools and unit tests.
 
 The __Graph__ module provides a programming pattern which aims to target the
-best features of _golang_ (channels, goroutines, composition) and enhance 
-complex application development.
+best features of __Go__ (channels, goroutines and composition for example)
+and simplify complex application development.
 
 ## Dependency Injection
 
-A __Unit__ in __Graph__ is a singleton `struct` value which can be injected into dependencies. For example,
+A __Unit__ is a singleton `struct` instance which can be injected into dependencies. For example,
 
 ```go
 package main
@@ -47,14 +47,17 @@ func main() {
 
 ```
 
-In this example, both `A` and `B` are defined as __Unit__ through including the anonymous field `graph.Unit`. By calling `graph.New` an instance of `A` is injected into the instance of `B`. _(Note: The impossibility of creating circular dependencies by design)_
+In this example, both `A` and `B` are defined as __Unit__ through including the anonymous field `graph.Unit`. By calling `graph.New` an instance of `A` is injected into the instance of `B`. _(Note the impossibility of creating circular dependencies by design)_
 
-If a graph was created by calling `graph.New(&C{})` instead, instances of `A` and `B` are injected into both `B` and `C`, however as a _Unit_ is a singleton pattern, only one `A` and one `B` are created first.
+If a graph was created by calling `graph.New(&C{})` instead, instances of `A` and `B` are injected into both `B` and `C`. However in this example, as a _Unit_ is
+a singleton pattern, only one `A` and one `B` instance are created, and the
+`A` instance is shared with both `B` and `C`
 
 ## Lifecycle Management
 
-Unlike some other languages, Go does not proscribe any lifecycle management for instances, you can use `make` and `new` to create instances with zero-values.
-Using __Graph__ lifecycle of instances can be managed through `Define`, `New`, `Run` and `Dispose` methods:
+Unlike other languages, __Go__ does not proscribe lifecycle management for instances other than using `new` and `make` to create zero-valued instances.
+
+Using __Graph__, the lifecycle of instances can be managed through `Define`, `New`, `Run` and `Dispose` functions:
 
   * `graph.Define(graph.State)` calls instance methods to set any global 
     state within your application. The instance methods will be called in
@@ -64,23 +67,25 @@ Using __Graph__ lifecycle of instances can be managed through `Define`, `New`, `
     order of dependency;
   * `graph.Run(context.Context) error` calls instance methods to run the
     application. The order of calling is not guaranteed compared to
-    instance dependencies;
+    instance dependencies. Context is passed which indicates when the
+    function should terminate and return;
   * `graph.Dispose() error` calls instance methods to dispose of any resources,
     in reverse dependency order.
 
-To implement the lifecycle within a __Unit__ for example,
+To achieve lifecycle management within a __Unit__, the following functions can
+be implemented:
 
 ```go
-func (a *A) Define(graph.State) {
+func (*A) Define(graph.State) {
     /* Define global state but do not initalize anything */ 
 }
 
-func (a *A) New(graph.State) error {
+func (*A) New(graph.State) error {
     /* Initialise instance from state, return any errors */
     return nil
 }
 
-func (a *A) Run(ctx context.Context) error {
+func (*A) Run(ctx context.Context) error {
     for {
         select {
         case <-ctx.Done():
@@ -90,7 +95,7 @@ func (a *A) Run(ctx context.Context) error {
     }
 }
 
-func (a *A) Dispose() error {
+func (*A) Dispose() error {
     /* Dispose of any resources used here */
     return nil
 }
@@ -102,9 +107,9 @@ all the phases of the lifecycle.
 
 ## What is `graph.State`
 
-The state instance defines any information which should be passed between
-units. The interface definition is somewhat vague,
-like `context.WithValue`:
+A `graph.State` implementation can define any information which should be passed 
+between units. The interface definition is purposefully vague and left to the
+implementor. The interface definition is:
 
 ```go
 type State interface {
@@ -113,23 +118,23 @@ type State interface {
 }
 ```
 
-You can implement any other state information required within your own
-implementation. There is an example in `github.com/djthorpe/graph/pkg/tool`
-which defines state as command-line flags and arguments passed in.
+There is an example in `github.com/djthorpe/graph/pkg/tool`
+which defines state as command-line flags and arguments using the `flag` module.
 
 ## Implementing Application Lifecycle
 
-You could implement the lifecycle within your own application like this. The `Graph` will ensure the lifecycle is   object 
+You implement the lifecycle within your own application calling the appropriate
+methods on the `graph.Graph` instance. For example,
 
 ```go
-func Run(ctx context.Context,a *App,s graph.State) error {
-    g := graph.New(a)
+func RunApp(ctx context.Context,a,b *App,s graph.State) error {
+    g := graph.New(a,b)
 
 	g.Define(s)
 	if err := g.New(s); err != nil {
 	    return err
 	}
-	if err := g.Run(ctx); err != nil {
+	if err := g.Run(ctx); err != nil { // Run
 		return err
 	}
 	if err := g.Dispose(); err != nil {
@@ -140,8 +145,30 @@ func Run(ctx context.Context,a *App,s graph.State) error {
 }
 ```
 
-## When does `Run` end
+## When does `Run` return?
 
+Each __Unit__ invokes the `Run` method independently and could return under
+one of the following conditions:
+
+  * It returns immediately with `nil` or an error;
+  * It waits for the passed context to indicate completion.
+
+There are three sensible strategies for when the `graph.Run` function should
+return. If we define the value passed into `graph.New` as the top-level or __Object__ 
+instance,
+
+  1. When any object instance returns (known as __Any__ policy). In the example
+    above, the commented __Run__ call will return when either `a` or `b` complete
+    or when the parent context indicates completion;
+  2. When all object instances return (known as __All__ policy). In the example
+    above, the commented __Run__ call will return when both `a` and `b` complete
+    or when the parent context indicates completion;
+  3. Finally, when the parent context indicates completion (known as __Wait__ policy). If 
+    either `a` or `b` complete beforehand, the commented function will continue to block 
+    until the parent context indicates completion.
+
+Typically, the former two policies would be used when be used for developing a command-line
+tool and the latter policy when running a unit test.
 
 # Mapping An `interface` to a Unit
 
