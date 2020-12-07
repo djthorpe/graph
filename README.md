@@ -170,16 +170,18 @@ instance,
 Typically, the former two policies would be used when be used for developing a command-line
 tool and the latter policy when running a unit test.
 
-# Mapping an `interface` to a Unit
+# Mapping an `interface` to a Unit (and integration testing)
 
-Concrete implementation is decoupled in __Graph__ by using interface fields. By
-using interfaces, different __Unit__ implementations can be injected depending
-on module imports. Swapping one implementation for another in this way aides
-integration testing with mock instances, for example.
+Concrete implementation is decoupled in __Graph__ by using interface fields
+rather than type fields. Different __Unit__ implementations can then be 
+injected based in a lookup. Swapping one implementation for another in this
+way aides integration testing with mock instances, for example.
 
 A concrete implementation is mapped to an interface before calling `graph.New`.
-Typically an `init.go` file can be used to ensure of the mapping during module
-import. You need to use slightly clunky syntax to do this,
+Typically an `init.go` in your module implemention is used to map. Alas, you need to
+use slightly clunky syntax to do this. If your concrete implementation of the
+__Unit__ is `mymodule.myunit` and it satisfies the interface definition of `graph.Events` 
+then,
 
 ```go
 package mymodule
@@ -199,8 +201,7 @@ func init() {
 }
 ```
 
-By mapping `&mymodule.myunit{}` to the `graph.Events` interface, inject the
-dependency as follows:
+Then, inject the dependency as follows:
 
 ```go
 
@@ -214,13 +215,51 @@ type App struct {
 }
 ```
 
-A call to `graph.New` will then inject the `mymodule` implementation into your
-instance. Replacing the with, for example, a mock implementation is then
-acheieved through importing a different module.
+A call to `graph.New` will then inject a `mymodule.myunit` dependency into 
+your instance. Substituting, for example, a mock implementation is then
+acheieved through import a different module in your tests.
 
 # Passing state between Unit instances
 
-# Unit tests and Mocking
+Instance `Run` functions are loosely coupled. To pass state between instances,
+a `graph.Events` dependency can be injected. This is defined by the following
+interface:
+
+```go
+type Events interface {
+	Emit(State)
+	Subscribe() <-chan State
+	Unsubscribe(<-chan State)
+}
+```
+
+The `Emit` method is used to pass state to any other subscribed instance. An
+instance would typically subscribe to these events like this:
+
+```go
+func (app *App) Run(ctx context.Context) error {
+	ch := app.Events.Subscribe()
+	defer app.Events.Unsubscribe(ch)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case evt := <-ch:
+			app.Process(evt)
+		}
+	}
+}
+
+func (app *App) Process(evt graph.State) {
+    // Do something with state...
+}
+```
+
+It is possible to `Emit` within the `Process` function without causing
+deadlock, but care needs to be taken.
+
+# Unit testing
 
 # Example: Shelltool lifecycle
 
