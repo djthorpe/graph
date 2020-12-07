@@ -8,12 +8,18 @@ import (
 	"github.com/djthorpe/graph/pkg/tool"
 )
 
+/////////////////////////////////////////////////////////////////////
+// TYPES
+
 type App struct {
 	graph.Unit
 
 	// -name flag on command line
 	name *string
 }
+
+/////////////////////////////////////////////////////////////////////
+// LIFECYCLE
 
 func (this *App) Define(flags tool.FlagSet) {
 	this.name = flags.String("name", "", "Your name")
