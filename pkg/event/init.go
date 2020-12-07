@@ -7,7 +7,7 @@ import (
 )
 
 func init() {
-	if err := graph.RegisterUnit(reflect.TypeOf(&publisher{}), reflect.TypeOf((*graph.Publisher)(nil))); err != nil {
-		panic("RegisterUnit(event.publisher): " + err.Error())
+	if err := graph.RegisterUnit(reflect.TypeOf(&events{}), reflect.TypeOf((*graph.Events)(nil))); err != nil {
+		panic("RegisterUnit(event.events): " + err.Error())
 	}
 }

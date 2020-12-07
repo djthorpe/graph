@@ -25,7 +25,7 @@ type Graph struct {
 // New returns a new graph object with top-level objects
 // which are used to create the graph of dependencies. Returns
 // nil if any object is not a graph.Unit
-func New(objs ...interface{}) *Graph {
+func New(objs ...interface{}) graph.Graph {
 	g := new(Graph)
 	g.objs = make([]reflect.Value, len(objs))
 	g.units = make(map[reflect.Type]reflect.Value, len(objs)*4) // Arbitary assumption on number of units per object

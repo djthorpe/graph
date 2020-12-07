@@ -10,7 +10,7 @@ import (
 /////////////////////////////////////////////////////////////////////
 // TYPES
 
-type publisher struct {
+type events struct {
 	graph.Unit
 	sync.RWMutex
 
@@ -21,12 +21,12 @@ type publisher struct {
 /////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-func (p *publisher) New(graph.State) error {
+func (p *events) New(graph.State) error {
 	p.q = make(chan graph.State)
 	return nil
 }
 
-func (p *publisher) Dispose() error {
+func (p *events) Dispose() error {
 	p.RWMutex.Lock()
 	defer p.RWMutex.Unlock()
 
@@ -42,7 +42,7 @@ func (p *publisher) Dispose() error {
 	return nil
 }
 
-func (p *publisher) Run(ctx context.Context) error {
+func (p *events) Run(ctx context.Context) error {
 	for {
 		select {
 		case evt := <-p.q:
@@ -62,7 +62,7 @@ func (p *publisher) Run(ctx context.Context) error {
 /////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-func (p *publisher) Subscribe() <-chan graph.State {
+func (p *events) Subscribe() <-chan graph.State {
 	p.RWMutex.Lock()
 	defer p.RWMutex.Unlock()
 
@@ -71,7 +71,7 @@ func (p *publisher) Subscribe() <-chan graph.State {
 	return ch
 }
 
-func (p *publisher) Unsubscribe(ch <-chan graph.State) {
+func (p *events) Unsubscribe(ch <-chan graph.State) {
 	p.RWMutex.Lock()
 	defer p.RWMutex.Unlock()
 
@@ -83,7 +83,7 @@ func (p *publisher) Unsubscribe(ch <-chan graph.State) {
 	}
 }
 
-func (p *publisher) Emit(s graph.State) error {
+func (p *events) Emit(s graph.State) error {
 	// Use NullState when evt is nil
 	if s == nil {
 		p.q <- NullState()

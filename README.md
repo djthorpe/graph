@@ -1,2 +1,2 @@
-# Graph: Dependency and Lifecycle
+# Graph: Dependency and Lifecycle Management
 

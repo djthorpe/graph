@@ -47,15 +47,15 @@ type State interface {
 	Value() interface{} // Arbitary value
 }
 
-// Publisher is used to pass state between units
-type Publisher interface {
+// Events is used to pass state between units
+type Events interface {
 	// Emit state
 	Emit(State)
 
-	// Subscribe to receive state
+	// Subscribe to receive events
 	Subscribe() <-chan State
 
-	// Unsubscribe from receiving state
+	// Unsubscribe from receiving events
 	Unsubscribe(<-chan State)
 }
 

@@ -36,7 +36,6 @@ func NewContext(parent context.Context, runType graph.RunType) *Context {
 				// if type=RunAll then cancel when all root objs ended
 			}
 		}
-		fmt.Println("Ended A")
 	}()
 
 	// Goroutine to wait for completion of either parent
@@ -57,7 +56,6 @@ func NewContext(parent context.Context, runType graph.RunType) *Context {
 		c.WaitGroup.Wait()
 		close(c.stop)
 		close(c.errs)
-		fmt.Println("Ended B")
 	}()
 
 	return c
