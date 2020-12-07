@@ -2,6 +2,7 @@ package tool
 
 import (
 	"context"
+	"errors"
 
 	graph "github.com/djthorpe/graph"
 	pkg "github.com/djthorpe/graph/pkg/graph"
@@ -9,12 +10,15 @@ import (
 )
 
 func ShellTool(ctx context.Context, name string, args []string, objs ...interface{}) error {
-	var results error
+	var result error
 
 	// Create graph and state
 	g, flagset := pkg.New(objs...), NewFlagset(name)
+	if g == nil || flagset == nil {
+		return errors.New("New() failed")
+	}
 
-	// Lifecycle: define->parse flags->new
+	// Lifecycle: define->parse->new
 	g.Define(flagset)
 	if err := flagset.Parse(args); err != nil {
 		return err
@@ -25,11 +29,11 @@ func ShellTool(ctx context.Context, name string, args []string, objs ...interfac
 
 	// Lifecycle: run->dispose
 	if err := g.Run(ctx, graph.RunAny); err != nil {
-		results = multierror.Append(results, err)
+		result = multierror.Append(result, err)
 	}
 	if err := g.Dispose(); err != nil {
-		results = multierror.Append(results, err)
+		result = multierror.Append(result, err)
 	}
 
-	return results
+	return result
 }
