@@ -170,7 +170,53 @@ instance,
 Typically, the former two policies would be used when be used for developing a command-line
 tool and the latter policy when running a unit test.
 
-# Mapping An `interface` to a Unit
+# Mapping an `interface` to a Unit
+
+Concrete implementation is decoupled in __Graph__ by using interface fields. By
+using interfaces, different __Unit__ implementations can be injected depending
+on module imports. Swapping one implementation for another in this way aides
+integration testing with mock instances, for example.
+
+A concrete implementation is mapped to an interface before calling `graph.New`.
+Typically an `init.go` file can be used to ensure of the mapping during module
+import. You need to use slightly clunky syntax to do this,
+
+```go
+package mymodule
+
+import (
+	"reflect"
+	"github.com/djthorpe/graph"
+)
+
+func init() {
+    if err := graph.RegisterUnit(
+        reflect.TypeOf(&myunit{}), 
+        reflect.TypeOf((*graph.Events)(nil))
+    ); err != nil {
+		panic("RegisterUnit(graph.Events): " + err.Error())
+	}
+}
+```
+
+By mapping `&mymodule.myunit{}` to the `graph.Events` interface, inject the
+dependency as follows:
+
+```go
+
+import (
+    _ "github.com/myuser/mymodule"
+)
+
+type App struct {
+    graph.Unit
+    graph.Events
+}
+```
+
+A call to `graph.New` will then inject the `mymodule` implementation into your
+instance. Replacing the with, for example, a mock implementation is then
+acheieved through importing a different module.
 
 # Passing state between Unit instances
 
