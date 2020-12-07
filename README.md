@@ -47,7 +47,7 @@ func main() {
 
 ```
 
-In this example, both `A` and `B` are defined as __Unit__ through including the anonymous field `graph.Unit`. By calling `graph.New` an instance of `A` is injected into the instance of `B`. _(Note the impossibility of creating circular dependencies by design)_
+In this example, both `A` and `B` are defined as __Unit__ through including the anonymous field `graph.Unit`. By calling `graph.New` an instance of `A` is injected into the instance of `B` _(Note the impossibility of creating circular dependencies by design)_.
 
 If a graph was created by calling `graph.New(&C{})` instead, instances of `A` and `B` are injected into both `B` and `C`. However in this example, as a _Unit_ is
 a singleton pattern, only one `A` and one `B` instance are created, and the
@@ -127,7 +127,7 @@ You implement the lifecycle within your own application calling the appropriate
 methods on the `graph.Graph` instance. For example,
 
 ```go
-func RunApp(ctx context.Context,a,b *App,s graph.State) error {
+func RunApp(ctx context.Context, a,b *App, s graph.State) error {
     g := graph.New(a,b)
 
 	g.Define(s)
