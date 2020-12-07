@@ -3,6 +3,7 @@ package tool
 import (
 	"context"
 	"errors"
+	"flag"
 
 	graph "github.com/djthorpe/graph"
 	pkg "github.com/djthorpe/graph/pkg/graph"
@@ -20,11 +21,20 @@ func ShellTool(ctx context.Context, name string, args []string, objs ...interfac
 
 	// Lifecycle: define->parse->new
 	g.Define(flagset)
-	if err := flagset.Parse(args); err != nil {
-		return err
+	if err := flagset.Parse(args[1:]); err != nil {
+		if err == flag.ErrHelp {
+			return nil
+		} else {
+			return err
+		}
 	}
 	if err := g.New(flagset); err != nil {
-		return err
+		if err == flag.ErrHelp {
+			flagset.Usage()
+			return nil
+		} else {
+			return err
+		}
 	}
 
 	// Lifecycle: run->dispose

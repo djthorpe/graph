@@ -53,7 +53,7 @@ func (g *Graph) Define(state graph.State) {
 
 	seen := make(map[reflect.Type]bool, len(g.units))
 	for _, obj := range g.objs {
-		g.do("Define", obj, []reflect.Value{reflect.ValueOf(state)}, seen)
+		g.do("Define", obj, []reflect.Value{reflect.ValueOf(state)}, seen, true)
 	}
 }
 
@@ -67,7 +67,7 @@ func (g *Graph) New(state graph.State) error {
 
 	seen := make(map[reflect.Type]bool, len(g.units))
 	for _, obj := range g.objs {
-		if err := g.do("New", obj, []reflect.Value{reflect.ValueOf(state)}, seen); err != nil {
+		if err := g.do("New", obj, []reflect.Value{reflect.ValueOf(state)}, seen, true); err != nil {
 			return err
 		}
 	}
@@ -84,7 +84,7 @@ func (g *Graph) Dispose() error {
 
 	seen := make(map[reflect.Type]bool, len(g.units))
 	for _, obj := range g.objs {
-		if err := g.do("Dispose", obj, []reflect.Value{}, seen); err != nil {
+		if err := g.do("Dispose", obj, []reflect.Value{}, seen, true); err != nil {
 			return err
 		}
 	}
@@ -112,7 +112,7 @@ func (g *Graph) Run(ctx context.Context, runType graph.RunType) error {
 	// Call run functions
 	seen := make(map[reflect.Type]bool, len(g.units))
 	for _, obj := range g.objs {
-		g.do("Run", obj, []reflect.Value{reflect.ValueOf(root)}, seen)
+		g.do("Run", obj, []reflect.Value{reflect.ValueOf(root)}, seen, true)
 	}
 
 	// Wait for end of run condition
@@ -149,7 +149,7 @@ func (g *Graph) graph(unit reflect.Value) {
 }
 
 // do calls functions in the right order and ensures no unit is called twice
-func (g *Graph) do(fn string, unit reflect.Value, args []reflect.Value, seen map[reflect.Type]bool) error {
+func (g *Graph) do(fn string, unit reflect.Value, args []reflect.Value, seen map[reflect.Type]bool, obj bool) error {
 	var result error
 
 	// Call Dispose leaf-last, continue on error
@@ -167,7 +167,7 @@ func (g *Graph) do(fn string, unit reflect.Value, args []reflect.Value, seen map
 			return nil
 		} else if _, exists := seen[t]; exists {
 			return nil
-		} else if err := g.do(fn, g.units[t], args, seen); err != nil {
+		} else if err := g.do(fn, g.units[t], args, seen, false); err != nil {
 			return err
 		} else {
 			return nil
@@ -183,7 +183,7 @@ func (g *Graph) do(fn string, unit reflect.Value, args []reflect.Value, seen map
 			result = multierror.Append(result, err)
 		}
 	case "Run":
-		args[0].Interface().(*Context).Run(unit)
+		args[0].Interface().(*Context).Run(unit, obj)
 	}
 
 	// Mark this unit as 'seen'

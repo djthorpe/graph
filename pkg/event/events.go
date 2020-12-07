@@ -83,7 +83,7 @@ func (p *events) Unsubscribe(ch <-chan graph.State) {
 	}
 }
 
-func (p *events) Emit(s graph.State) error {
+func (p *events) Emit(s graph.State) {
 	// Use NullState when evt is nil
 	if s == nil {
 		p.q <- NullState()

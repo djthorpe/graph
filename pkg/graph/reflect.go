@@ -16,7 +16,7 @@ var (
 )
 
 /////////////////////////////////////////////////////////////////////
-// METHODS
+// PRIVATE METHODS
 
 // equalsType returns true if two types are equivalent
 func equalsType(a, b reflect.Type) bool {

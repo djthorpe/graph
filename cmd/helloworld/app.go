@@ -21,7 +21,7 @@ type App struct {
 /////////////////////////////////////////////////////////////////////
 // LIFECYCLE
 
-func (this *App) Define(flags tool.FlagSet) {
+func (this *App) Define(flags *tool.FlagSet) {
 	this.name = flags.String("name", "", "Your name")
 }
 

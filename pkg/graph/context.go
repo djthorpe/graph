@@ -2,7 +2,6 @@ package graph
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -11,29 +10,50 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
+/////////////////////////////////////////////////////////////////////
+// TYPES
+
 type Context struct {
 	sync.WaitGroup
 
 	cancels []context.CancelFunc
-	errs    chan error
+	errs    chan *Error
+	objs    *counter
 	stop    chan struct{}
 	result  error
 }
 
+/////////////////////////////////////////////////////////////////////
+// NEW
+
 func NewContext(parent context.Context, runType graph.RunType) *Context {
 	c := new(Context)
 	c.stop = make(chan struct{})
-	c.errs = make(chan error)
+	c.errs = make(chan *Error)
+	c.objs = NewCounter()
+	policy := make(chan graph.RunType)
 
 	// Collect errors returned by Run calls
 	go func() {
 		for err := range c.errs {
-			if err != nil {
-				c.result = multierror.Append(c.result, err)
-				// TODO: Determine if cancel needed
-				// if type=RunWait then no cancels
-				// if type=RunAny then cancel if any root objs ended
-				// if type=RunAll then cancel when all root objs ended
+			// Decrement counter if an object ended
+			c.objs.Dec(err.Obj())
+
+			// Check Run terminate policy
+			switch runType {
+			case graph.RunAll:
+				if err.Obj() && c.objs.IsZero() {
+					policy <- runType
+				}
+			case graph.RunAny:
+				if err.Obj() {
+					policy <- runType
+				}
+			}
+
+			// Append any error
+			if err.IsErr() {
+				c.result = multierror.Append(c.result, err.Unwrap())
 			}
 		}
 	}()
@@ -45,7 +65,10 @@ func NewContext(parent context.Context, runType graph.RunType) *Context {
 		// Wait for either parent context completed or other condition
 		select {
 		case <-parent.Done():
-			fmt.Println("End reason = parent")
+			// End reason is because parent cancelled
+			break
+		case <-policy:
+			// End reason is due to runType policy
 			break
 		}
 		// Send cancels to children
@@ -56,19 +79,24 @@ func NewContext(parent context.Context, runType graph.RunType) *Context {
 		c.WaitGroup.Wait()
 		close(c.stop)
 		close(c.errs)
+		close(policy)
 	}()
 
 	return c
 }
 
-func (c *Context) Run(unit reflect.Value) {
+/////////////////////////////////////////////////////////////////////
+// PUBLIC METHODS
+
+func (c *Context) Run(unit reflect.Value, obj bool) {
 	// Create a context which can be cancelled
 	child, cancel := context.WithCancel(context.Background())
 	c.cancels = append(c.cancels, cancel)
 	c.WaitGroup.Add(1)
+	c.objs.Inc(obj)
 	go func() {
 		defer c.WaitGroup.Done()
-		c.errs <- call("Run", unit, []reflect.Value{reflect.ValueOf(child)})
+		c.errs <- NewError(call("Run", unit, []reflect.Value{reflect.ValueOf(child)}), obj)
 	}()
 }
 
