@@ -32,6 +32,9 @@ func isStructPtr(t reflect.Type) bool {
 // isUnitType returns true if a struct ptr contains a gopi.Unit
 // type
 func isUnitType(t reflect.Type) bool {
+	if t == nil {
+		return false
+	}
 	if isStructPtr(t) == false {
 		return false
 	}

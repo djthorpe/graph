@@ -9,6 +9,9 @@ import (
 	"github.com/hashicorp/go-multierror"
 )
 
+/////////////////////////////////////////////////////////////////////
+// TYPES
+
 type Graph struct {
 	sync.RWMutex
 
@@ -193,15 +196,13 @@ func (g *Graph) do(fn string, unit reflect.Value, args []reflect.Value, seen map
 // Returns type for struct field or nil if not a unit type.
 // Will translate any mapped interfaces to concrete types.
 func (g *Graph) unitTypeForField(f reflect.StructField) reflect.Type {
-	if f.Type.Kind() == reflect.Interface {
-		// TODO
-		return nil
-		//if _, exists := iface[f.Type]; exists {
-		//	return iface[f.Type]
-		//}
-	} else if isUnitType(f.Type) {
-		return f.Type
+	t := f.Type
+	if t.Kind() == reflect.Interface {
+		t = graph.UnitTypeForInterface(f.Type)
 	}
-	// Not found
-	return nil
+	if isUnitType(t) {
+		return t
+	} else {
+		return nil
+	}
 }

@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"errors"
+	"reflect"
 )
 
 /////////////////////////////////////////////////////////////////////
@@ -26,15 +27,9 @@ var (
 	ErrAllObjectsEnded        = errors.New("All object Run() ended")
 )
 
-/////////////////////////////////////////////////////////////////////
-// CREATE A GRAPH
-
-// NewGraph creates a new lifecycle for objects and dependent
-// units and will return the lifecycle structure (Graph).
-//func NewGraph(objs ...interface{}) Graph {
-// TODO return pkg.New(objs...)
-//	return nil
-//}
+var (
+	iface = make(map[reflect.Type]reflect.Type)
+)
 
 /////////////////////////////////////////////////////////////////////
 // INTERFACES
@@ -83,3 +78,42 @@ func (this *Unit) Define(State)              { /* NOOP */ }
 func (this *Unit) New(State) error           { /* NOOP */ return nil }
 func (this *Unit) Run(context.Context) error { /* NOOP */ return nil }
 func (this *Unit) Dispose() error            { /* NOOP */ return nil }
+
+/////////////////////////////////////////////////////////////////////
+// REGISTER INTERFACES
+
+func RegisterUnit(t, i reflect.Type) error {
+	if t == nil || i == nil {
+		return errors.New("Nil Parameter")
+	}
+	for i.Kind() == reflect.Ptr {
+		i = i.Elem()
+	}
+	if i.Kind() != reflect.Interface {
+		return errors.New("Not an interface")
+	}
+	if t.Implements(i) == false {
+		return errors.New("Does not implement interface")
+	}
+	if _, exists := iface[i]; exists {
+		return errors.New("Duplicate call to RegisterUnit")
+	}
+
+	iface[i] = t
+	return nil
+}
+
+func UnitTypeForInterface(i reflect.Type) reflect.Type {
+	if t, exists := iface[i]; exists {
+		return t
+	} else {
+		return nil
+	}
+}
+
+// NewGraph creates a new lifecycle for objects and dependent
+// units and will return the lifecycle structure (Graph).
+//func NewGraph(objs ...interface{}) Graph {
+// TODO return pkg.New(objs...)
+//	return nil
+//}

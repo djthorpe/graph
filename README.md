@@ -1,2 +1,2 @@
-# graph
-golang object dependency and lifecycle module
+# Graph: Dependency and Lifecycle
+
