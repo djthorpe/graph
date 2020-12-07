@@ -1,13 +1,13 @@
 package graph_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	graph "github.com/djthorpe/graph"
 	pkg "github.com/djthorpe/graph/pkg/graph"
-	"golang.org/x/net/context"
 )
 
 /////////////////////////////////////////////////////////////////////
