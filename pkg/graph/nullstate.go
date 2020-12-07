@@ -1,4 +1,4 @@
-package event
+package graph
 
 import (
 	"github.com/djthorpe/graph"
@@ -22,4 +22,8 @@ func (*nullstate) Name() string {
 
 func (*nullstate) Value() interface{} {
 	return nil
+}
+
+func (*nullstate) String() string {
+	return "<nil>"
 }

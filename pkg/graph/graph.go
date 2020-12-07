@@ -15,18 +15,20 @@ import (
 type Graph struct {
 	sync.RWMutex
 
-	objs  []reflect.Value
-	units map[reflect.Type]reflect.Value
+	policy RunPolicy
+	objs   []reflect.Value
+	units  map[reflect.Type]reflect.Value
 }
 
 /////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-// New returns a new graph object with top-level objects
+// New returns a new graph object with "root" objects
 // which are used to create the graph of dependencies. Returns
 // nil if any object is not a graph.Unit
-func New(objs ...interface{}) graph.Graph {
+func New(policy RunPolicy, objs ...interface{}) graph.Graph {
 	g := new(Graph)
+	g.policy = policy
 	g.objs = make([]reflect.Value, len(objs))
 	g.units = make(map[reflect.Type]reflect.Value, len(objs)*4) // Arbitary assumption on number of units per object
 
@@ -102,12 +104,12 @@ func (g *Graph) Dispose() error {
 // Run returns are collected and returned. Run terminates according
 // to the RunType, either waiting for context, or ending when all
 // goroutines have ended.
-func (g *Graph) Run(ctx context.Context, runType graph.RunType) error {
+func (g *Graph) Run(ctx context.Context) error {
 	g.RWMutex.Lock()
 	defer g.RWMutex.Unlock()
 
-	// Make context object
-	root := NewContext(ctx, runType)
+	// Make context object with parent context
+	root := NewContext(ctx, g.policy)
 
 	// Call run functions
 	seen := make(map[reflect.Type]bool, len(g.units))

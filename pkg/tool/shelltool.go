@@ -5,7 +5,6 @@ import (
 	"errors"
 	"flag"
 
-	graph "github.com/djthorpe/graph"
 	pkg "github.com/djthorpe/graph/pkg/graph"
 	multierror "github.com/hashicorp/go-multierror"
 )
@@ -14,7 +13,7 @@ func ShellTool(ctx context.Context, name string, args []string, objs ...interfac
 	var result error
 
 	// Create graph and state
-	g, flagset := pkg.New(objs...), NewFlagset(name)
+	g, flagset := pkg.New(pkg.RunAll, objs...), NewFlagset(name)
 	if g == nil || flagset == nil {
 		return errors.New("New() failed")
 	}
@@ -38,7 +37,7 @@ func ShellTool(ctx context.Context, name string, args []string, objs ...interfac
 	}
 
 	// Lifecycle: run->dispose
-	if err := g.Run(ctx, graph.RunAny); err != nil {
+	if err := g.Run(ctx); err != nil {
 		result = multierror.Append(result, err)
 	}
 	if err := g.Dispose(); err != nil {

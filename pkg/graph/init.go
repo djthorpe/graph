@@ -1,4 +1,4 @@
-package event
+package graph
 
 import (
 	"reflect"
@@ -8,6 +8,6 @@ import (
 
 func init() {
 	if err := graph.RegisterUnit(reflect.TypeOf(&events{}), reflect.TypeOf((*graph.Events)(nil))); err != nil {
-		panic("RegisterUnit(event.events): " + err.Error())
+		panic("RegisterUnit(graph.events): " + err.Error())
 	}
 }

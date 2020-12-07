@@ -3,7 +3,7 @@ package graph
 /////////////////////////////////////////////////////////////////////
 // TYPES
 
-type Error struct {
+type result struct {
 	err error
 	obj bool
 }
@@ -11,18 +11,18 @@ type Error struct {
 /////////////////////////////////////////////////////////////////////
 // NEW
 
-func NewError(err error, obj bool) *Error {
-	return &Error{err, obj}
+func newResult(err error, obj bool) *result {
+	return &result{err, obj}
 }
 
 /////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-func (e *Error) IsErr() bool {
+func (e *result) IsErr() bool {
 	return e.err != nil
 }
 
-func (e *Error) Error() string {
+func (e *result) Error() string {
 	if e.err == nil {
 		return ""
 	} else {
@@ -30,10 +30,10 @@ func (e *Error) Error() string {
 	}
 }
 
-func (e *Error) Obj() bool {
+func (e *result) Obj() bool {
 	return e.obj
 }
 
-func (e *Error) Unwrap() error {
+func (e *result) Unwrap() error {
 	return e.err
 }

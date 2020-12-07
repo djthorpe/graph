@@ -3,6 +3,7 @@ package graph_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -38,67 +39,7 @@ func (s *state) Equals(value string) bool {
 }
 
 /////////////////////////////////////////////////////////////////////
-// TESTS
-
-func Test_Graph_001(t *testing.T) {
-	type TestNotUnit struct{}
-	type TestUnit struct{ graph.Unit }
-	type TestNamedUnit struct{ named graph.Unit }
-
-	if g := pkg.New(); g == nil {
-		t.Error("Expected non-nil return")
-	}
-	if g := pkg.New(&TestNotUnit{}); g != nil {
-		t.Error("Expected nil return")
-	}
-	if g := pkg.New(&TestUnit{}); g == nil {
-		t.Error("Expected non-nil return")
-	}
-	if g := pkg.New(&TestNamedUnit{}); g != nil {
-		t.Error("Expected nil return")
-	}
-}
-
-func Test_Graph_002(t *testing.T) {
-	type A struct{ graph.Unit }
-	type B struct {
-		graph.Unit
-		*A
-	}
-
-	if g := pkg.New(new(A)); g == nil {
-		t.Error("Expected non-nil return")
-	}
-	b := new(B)
-	if g := pkg.New(b); g == nil {
-		t.Error("Expected non-nil return")
-	} else if b.A == nil {
-		t.Error("Expected non-nil A")
-	}
-}
-
-func Test_Graph_003(t *testing.T) {
-	type A struct{ graph.Unit }
-	type B struct {
-		graph.Unit
-		*A
-	}
-	type C struct {
-		graph.Unit
-		a *A
-		b *B
-	}
-
-	if g := pkg.New(new(A)); g == nil {
-		t.Error("Expected non-nil return")
-	}
-	b := new(B)
-	if g := pkg.New(b); g == nil {
-		t.Error("Expected non-nil return")
-	} else if b.A == nil {
-		t.Error("Expected non-nil A")
-	}
-}
+// UNITS
 
 type A struct {
 	graph.Unit
@@ -111,6 +52,11 @@ type B struct {
 }
 
 type C struct {
+	graph.Unit
+	*B
+}
+
+type D struct {
 	graph.Unit
 	*B
 }
@@ -153,6 +99,7 @@ func (*B) New(s *state) error {
 func (this *B) Run(ctx context.Context) error {
 	this.state.Log("Called Run on B (waits for done)")
 	<-ctx.Done()
+	fmt.Println("B is done")
 	this.state.Log("B Run done")
 	this.state.Add("B")
 	return nil
@@ -182,8 +129,95 @@ func (this *C) Run(context.Context) error {
 	return errors.New("Error from C")
 }
 
+func (this *D) New(s *state) error {
+	s.Log("Called New on D")
+	s.Add("D")
+	return nil
+}
+
+func (this *D) Dispose() error {
+	this.state.Log("Called Dispose on D")
+	this.state.Add("D")
+	return nil
+}
+
+func (this *D) Run(ctx context.Context) error {
+	this.state.Log("Called Run on D (returns after one second)")
+	this.state.Add("D")
+	select {
+	case <-ctx.Done():
+		fmt.Println("ctxdone")
+	case <-time.After(time.Second):
+		fmt.Println("ticker done")
+	}
+	return ctx.Err()
+}
+
+/////////////////////////////////////////////////////////////////////
+// TESTS
+
+func Test_Graph_001(t *testing.T) {
+	type TestNotUnit struct{}
+	type TestUnit struct{ graph.Unit }
+	type TestNamedUnit struct{ named graph.Unit }
+
+	if g := pkg.New(pkg.RunWait); g == nil {
+		t.Error("Expected non-nil return")
+	}
+	if g := pkg.New(pkg.RunWait, &TestNotUnit{}); g != nil {
+		t.Error("Expected nil return")
+	}
+	if g := pkg.New(pkg.RunWait, &TestUnit{}); g == nil {
+		t.Error("Expected non-nil return")
+	}
+	if g := pkg.New(pkg.RunWait, &TestNamedUnit{}); g != nil {
+		t.Error("Expected nil return")
+	}
+}
+
+func Test_Graph_002(t *testing.T) {
+	type A struct{ graph.Unit }
+	type B struct {
+		graph.Unit
+		*A
+	}
+
+	if g := pkg.New(pkg.RunWait, new(A)); g == nil {
+		t.Error("Expected non-nil return")
+	}
+	b := new(B)
+	if g := pkg.New(pkg.RunWait, b); g == nil {
+		t.Error("Expected non-nil return")
+	} else if b.A == nil {
+		t.Error("Expected non-nil A")
+	}
+}
+
+func Test_Graph_003(t *testing.T) {
+	type A struct{ graph.Unit }
+	type B struct {
+		graph.Unit
+		*A
+	}
+	type C struct {
+		graph.Unit
+		a *A
+		b *B
+	}
+
+	if g := pkg.New(pkg.RunWait, new(A)); g == nil {
+		t.Error("Expected non-nil return")
+	}
+	b := new(B)
+	if g := pkg.New(pkg.RunWait, b); g == nil {
+		t.Error("Expected non-nil return")
+	} else if b.A == nil {
+		t.Error("Expected non-nil A")
+	}
+}
+
 func Test_Graph_004(t *testing.T) {
-	g := pkg.New(new(B))
+	g := pkg.New(pkg.RunWait, new(B))
 	if g == nil {
 		t.Error("Expected non-nil return")
 	}
@@ -195,7 +229,7 @@ func Test_Graph_004(t *testing.T) {
 }
 
 func Test_Graph_005(t *testing.T) {
-	g := pkg.New(new(B))
+	g := pkg.New(pkg.RunWait, new(B))
 	if g == nil {
 		t.Error("Expected non-nil return")
 	}
@@ -210,7 +244,7 @@ func Test_Graph_005(t *testing.T) {
 }
 
 func Test_Graph_006(t *testing.T) {
-	g := pkg.New(new(B))
+	g := pkg.New(pkg.RunWait, new(B))
 	if g == nil {
 		t.Error("Expected non-nil return")
 	}
@@ -229,7 +263,7 @@ func Test_Graph_006(t *testing.T) {
 
 func Test_Graph_007(t *testing.T) {
 	// A <- B <- C
-	g := pkg.New(new(B), new(C))
+	g := pkg.New(pkg.RunWait, new(B), new(C))
 	state := NewState(t)
 
 	if err := g.New(state); err != nil {
@@ -242,7 +276,7 @@ func Test_Graph_007(t *testing.T) {
 
 func Test_Graph_008(t *testing.T) {
 	// A <- B <- C for first two objects and then A
-	g := pkg.New(new(B), new(C), new(A))
+	g := pkg.New(pkg.RunWait, new(B), new(C), new(A))
 	state := NewState(t)
 
 	if err := g.New(state); err != nil {
@@ -255,7 +289,7 @@ func Test_Graph_008(t *testing.T) {
 
 func Test_Graph_009(t *testing.T) {
 	// A <- B
-	g := pkg.New(new(B))
+	g := pkg.New(pkg.RunWait, new(B))
 	state := NewState(t)
 
 	if err := g.New(state); err != nil {
@@ -270,7 +304,7 @@ func Test_Graph_009(t *testing.T) {
 	defer cancel()
 
 	// Start running, returns only on deadline exceeded
-	if err := g.Run(ctx, graph.RunWait); err != nil && err != context.DeadlineExceeded {
+	if err := g.Run(ctx); err != nil && err != context.DeadlineExceeded {
 		t.Error(err)
 	}
 
@@ -282,7 +316,7 @@ func Test_Graph_009(t *testing.T) {
 
 func Test_Graph_010(t *testing.T) {
 	// A
-	g := pkg.New(new(A))
+	g := pkg.New(pkg.RunAll, new(A))
 	state := NewState(t)
 
 	if err := g.New(state); err != nil {
@@ -295,7 +329,7 @@ func Test_Graph_010(t *testing.T) {
 
 	// Start running, returns immediately as A ends immediately
 	now := time.Now()
-	if err := g.Run(ctx, graph.RunAll); err != nil && err != context.DeadlineExceeded {
+	if err := g.Run(ctx); err != nil && err != context.DeadlineExceeded {
 		t.Error(err)
 	}
 	if time.Since(now) >= time.Second {
@@ -305,7 +339,7 @@ func Test_Graph_010(t *testing.T) {
 
 func Test_Graph_011(t *testing.T) {
 	// A
-	g := pkg.New(new(A))
+	g := pkg.New(pkg.RunAny, new(A))
 	state := NewState(t)
 
 	if err := g.New(state); err != nil {
@@ -318,10 +352,25 @@ func Test_Graph_011(t *testing.T) {
 
 	// Start running, returns immediately as A ends immediately
 	now := time.Now()
-	if err := g.Run(ctx, graph.RunAny); err != nil && err != context.DeadlineExceeded {
+	if err := g.Run(ctx); err != nil && err != context.DeadlineExceeded {
 		t.Error(err)
 	}
 	if time.Since(now) >= time.Second {
 		t.Error("Run did not return immediately")
+	}
+}
+
+func Test_Graph_012(t *testing.T) {
+	// A <- B <- D
+	g := pkg.New(pkg.RunAny, new(D), new(D))
+	state := NewState(t)
+
+	if err := g.New(state); err != nil {
+		t.Error(err)
+	}
+
+	// Start running, returns after either D ends
+	if err := g.Run(context.Background()); err != nil && err != context.DeadlineExceeded {
+		t.Error(err)
 	}
 }

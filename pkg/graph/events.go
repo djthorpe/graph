@@ -1,4 +1,4 @@
-package event
+package graph
 
 import (
 	"context"

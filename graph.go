@@ -5,27 +5,13 @@ import (
 )
 
 /////////////////////////////////////////////////////////////////////
-// CONSTANTS
-
-// RunType determines how the graph.Run method completes. It will
-// either complete based on parent context, or when all "objects"
-// have completed, or when any "object" completes.
-type RunType int
-
-const (
-	RunWait RunType = iota // Terminates when parent context is done
-	RunAny                 // Terminates when any obj Run goroutines end
-	RunAll                 // Terminates when all obj Run goroutines end
-)
-
-/////////////////////////////////////////////////////////////////////
 // INTERFACES
 
 // Graph encapulates the lifecycle of objects and units
 type Graph interface {
 	Define(State)
 	New(State) error
-	Run(context.Context, RunType) error
+	Run(context.Context) error
 	Dispose() error
 }
 
