@@ -71,9 +71,7 @@ func NewContext(parent context.Context, policy RunPolicy) *Context {
 			cancel()
 		}
 		// Wait for children to have terminated, close channels
-		fmt.Println("->WAIT")
 		c.WaitGroup.Wait()
-		fmt.Println("<-WAIT")
 		close(c.errs)
 		close(c.done)
 	}()
@@ -121,8 +119,6 @@ func (c *Context) Done() <-chan struct{} {
 	// Collect errors returned by Run calls
 	go func() {
 		for err := range c.errs {
-			fmt.Println("GOT ERR", err)
-
 			// Decrement counter if an object ended
 			c.objs.Dec(err.Obj())
 
@@ -143,7 +139,6 @@ func (c *Context) Done() <-chan struct{} {
 				c.result = multierror.Append(c.result, err.Unwrap())
 			}
 		}
-		fmt.Println("END OF ERRS")
 		close(c.reason)
 	}()
 
