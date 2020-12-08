@@ -273,13 +273,13 @@ translate into a `graph.NilEvent` object being emitted.
 
 ## Implementing unit tests
 
-You can test any __Unit__ by using the Test function. For example,
+You can test any __Unit__ by using the `tool.Test` function. For example,
 
 ```go
 package mymodule_test
 
 import (
-	"testing"
+  "testing"
   "mymodule"
   tool "github.com/djthorpe/graph/pkg/tool"
 )
@@ -291,7 +291,7 @@ func Test_001(t *testing.T) {
 }
 ```
 
-The `Test` method accepts an array of command-line arguments or nil
+The `tool.Test` method accepts an array of command-line arguments or nil
 if these are not used.
 
 ## Other approaches for dependency injection
