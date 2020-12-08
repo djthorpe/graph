@@ -84,7 +84,8 @@ func (*myUnit) Dispose() error {
 }
 ```
 
-Then you can inject myUnit into your application, for example:
+More information about the lifecycle, passing state between
+units, testing and so forth is provided in the documentation.
 
 ## Documentation
 
@@ -92,7 +93,7 @@ More information on usage of __Graph__ is provided in the following documentatio
 
   * [Guide](blob/main/doc/README.md)
   * [Examples of Graph usage](blob/main/doc/examples.md)
-  * [pkg.go.dev](https://pkg.go.dev/github.com/djthorpe/graph)
+  * [pkg.go.dev documentation](https://pkg.go.dev/github.com/djthorpe/graph)
 
 ## Project Status
 

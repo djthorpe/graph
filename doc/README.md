@@ -19,12 +19,16 @@ to simplify complex application development.
 
 ## Dependency Injection
 
-A __Unit__ is a singleton `struct` instance which can be injected into dependencies. For example,
+A __Unit__ is a singleton `struct` instance which can be injected into dependencies.
+Then, the `graph.New` function is called to inject the dependencies. For example,
 
 ```go
 package main
 
-import "github.com/djthorpe/graph"
+import (
+    graph "github.com/djthorpe/graph"
+    pkg "github.com/djthorpe/graph/pkg/graph"
+)
 
 type A struct {
     graph.Unit
@@ -42,15 +46,15 @@ type C struct {
 }
 
 func main() {
-    g := graph.New(&B{})    
+    g := pkg.New(&B{})    
     // ...
 }
 
 ```
 
-In this example, both `A` and `B` are defined as __Unit__ through including the anonymous field `graph.Unit`. By calling `graph.New` an instance of `A` is injected into the instance of `B` _(Note the impossibility of creating circular dependencies by design)_.
+In this example, both `A` and `B` are defined as __Unit__ through including the anonymous field `graph.Unit`. By calling `pkg.New` an instance of `A` is injected into the instance of `B` _(Note the impossibility of creating circular dependencies by design)_.
 
-If a graph was created by calling `graph.New(&C{})` instead, instances of `A` and `B` are injected into both `B` and `C`. However in this example, as a _Unit_ is
+If a graph was created by calling `pkg.New(&C{})` instead, instances of `A` and `B` are injected into both `B` and `C`. However in this example, as a _Unit_ is
 a singleton pattern, only one `A` and one `B` instance are created, and the
 `A` instance is shared with both `B` and `C`
 
@@ -73,8 +77,7 @@ Using __Graph__, the lifecycle of instances can be managed through `Define`, `Ne
   * `graph.Dispose() error` calls instance methods to dispose of any resources,
     in reverse dependency order.
 
-To achieve lifecycle management within a __Unit__, the following functions can
-be implemented:
+For example,
 
 ```go
 func (*A) Define(graph.State) {
@@ -103,10 +106,10 @@ func (*A) Dispose() error {
 
 ```
 
-Each function definition is optional, not all __Unit__ instances will need
-all the phases of the lifecycle.
+Each function definition is optional, not all units will need all the phases of 
+the lifecycle.
 
-### What is `graph.State`
+### What is `graph.State`?
 
 A `graph.State` implementation can define any information which should be passed 
 between units. The interface definition is purposefully vague and left to the
@@ -125,11 +128,11 @@ which defines state as command-line flags and arguments using the `flag` module.
 ### Implementing Application Lifecycle
 
 You implement the lifecycle within your own application calling the appropriate
-methods on the `graph.Graph` instance. For example,
+methods on the `pkg.Graph` instance. For example,
 
 ```go
 func RunApp(ctx context.Context, a,b *App, s graph.State) error {
-    g := graph.New(a,b)
+    g := pkg.New(a,b)
 
 	g.Define(s)
 	if err := g.New(s); err != nil {
@@ -148,28 +151,28 @@ func RunApp(ctx context.Context, a,b *App, s graph.State) error {
 
 ### When does `Run` return?
 
-Each __Unit__ invokes the `Run` method independently and could return under
-one of the following conditions:
+Each __Unit__ invokes the `Run` method independently as a goroutine and 
+could return under one of the following conditions:
 
-  * It returns immediately with `nil` or an error;
-  * It waits for the passed context to indicate completion.
+  * It could return at any time with or without an error condition;
+  * It could wait for the passed context to indicate completion.
 
-There are three sensible strategies for when the `graph.Run` function should
-return. If we define the value passed into `graph.New` as the top-level or __Object__ 
-instance,
+There are three sensible strategies for when the `pkg.Run` function should
+return. If we define the value passed into `pkg.New` as the top-level 
+(aka __object__) instance,
 
-  1. When any object instance returns (known as __Any__ policy). In the example
-    above, the commented __Run__ call will return when either `a` or `b` complete
-    or when the parent context indicates completion;
-  2. When all object instances return (known as __All__ policy). In the example
-    above, the commented __Run__ call will return when both `a` and `b` complete
-    or when the parent context indicates completion;
-  3. Finally, when the parent context indicates completion (known as __Wait__ policy). If 
-    either `a` or `b` complete beforehand, the commented function will continue to block 
-    until the parent context indicates completion.
+  1. When any object instance returns: In the example
+     above, the commented __Run__ call will return when either
+     `a` or `b` complete or when the parent context indicates completion;
+  2. When all object instances return: In the example
+     above, the commented __Run__ call will return when both `a` and `b` 
+     complete or when the parent context indicates completion;
+  3. When the parent context indicates completion: If 
+     either `a` or `b` complete beforehand, the commented function will 
+     continue to block until the parent context indicates completion.
 
-Typically, the former two policies would be used when be used for developing a command-line
-tool and the latter policy when running a unit test.
+Typically, the former two policies would be used when be used for developing a 
+command-line tool and the latter policy when running a unit test.
 
 ## Mapping an `interface` to a Unit (and integration testing)
 
@@ -262,7 +265,25 @@ deadlock, but care needs to be taken.
 
 ## Implementing unit tests
 
-## Other Approaches
+TODO
+
+## Other approaches for dependency injection
+
+  * [Dingo](https://pkg.go.dev/flamingo.me/dingo) also maps implementations
+    to interfaces. Injecting dependencies is done programmatically using
+    the `Bind` function.
+  * [Wire](https://pkg.go.dev/github.com/google/wire) is a code generation
+    tool which satisfies dependencies before build.
+  * [Dig](https://pkg.go.dev/go.uber.org/dig) injects dependencies using 
+    reflection, separating providers from result instances.
 
 ## Contributions & Usage
 
+Please see the [examples](examples.md) documentation for descriptions on
+how __Graph__ can be used practicallly.
+
+__Graph__ is licensed under Apache 2.0, please read that license about using and 
+forking. Essentially, you are free to use in all circumstances as long as credit
+is provided and no endorsement is implied.
+
+Questions, comments and pull requests are welcomed.
