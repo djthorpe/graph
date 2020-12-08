@@ -122,10 +122,17 @@ type State interface {
 }
 ```
 
+There are two cases where `graph.State` is used:
+
+  * To pass state around instances in `Define` and `New` phases of the lifecycle;
+  * To pass state between instances in the `Run` phase, using a `graph.Events`
+    object which provides `Subscribe`, `Unsubscribe` and `Emit` functions.
+
 There is an example in `github.com/djthorpe/graph/pkg/tool`
 which defines state as command-line flags and arguments using the `flag` module.
+There is more information on passing state as events below.
 
-### Implementing Application Lifecycle
+### Implementing the application lifecycle
 
 You implement the lifecycle within your own application calling the appropriate
 methods on the `pkg.Graph` instance. For example,
@@ -174,7 +181,7 @@ return. If we define the value passed into `pkg.New` as the top-level
 Typically, the former two policies would be used when be used for developing a 
 command-line tool and the latter policy when running a unit test.
 
-## Mapping an `interface` to a Unit (and integration testing)
+## Mapping an interface to a Unit (and integration testing)
 
 Concrete implementation is decoupled in __Graph__ by using interface fields
 rather than type fields. Different __Unit__ implementations can then be 
@@ -261,11 +268,31 @@ func (app *App) Process(evt graph.State) {
 ```
 
 It is possible to `Emit` within the `Process` function without causing
-deadlock, but care needs to be taken.
+deadlock, but care needs to be taken. Emitting a `nil` value will
+translate into a `graph.NilEvent` object being emitted.
 
 ## Implementing unit tests
 
-TODO
+You can test any __Unit__ by using the Test function. For example,
+
+```go
+package mymodule_test
+
+import (
+	"testing"
+  "mymodule"
+  tool "github.com/djthorpe/graph/pkg/tool"
+)
+
+func Test_001(t *testing.T) {
+  tool.Test(t,nil,new(mymodule.MyUnit),func(unit *mymodule.MyUnit) {
+    t.Log("Perform testing here:",unit)
+  })
+}
+```
+
+The `Test` method accepts an array of command-line arguments or nil
+if these are not used.
 
 ## Other approaches for dependency injection
 
