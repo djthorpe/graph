@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"sync"
 
@@ -21,6 +22,13 @@ type Graph struct {
 }
 
 /////////////////////////////////////////////////////////////////////
+// GLOBALS
+
+var (
+	errCircularReference = errors.New("Circular Reference")
+)
+
+/////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
 // New returns a new graph object with "root" objects
@@ -37,9 +45,11 @@ func New(policy RunPolicy, objs ...interface{}) graph.Graph {
 		v := reflect.ValueOf(objs[i])
 		if isUnitType(v.Type()) == false {
 			return nil
+		} else if err := g.graph(v); err != nil {
+			return nil
+		} else {
+			g.objs[i] = v
 		}
-		g.graph(v)
-		g.objs[i] = v
 	}
 
 	return g
@@ -128,12 +138,17 @@ func (g *Graph) Run(ctx context.Context) error {
 // PRIVATE METHODS
 
 // build walks graph to create zero-values of units
-func (g *Graph) graph(unit reflect.Value) {
-	forEachField(unit, false, func(f reflect.StructField, i int) error {
+func (g *Graph) graph(unit reflect.Value) error {
+	return forEachField(unit, false, func(f reflect.StructField, i int) error {
 		t := g.unitTypeForField(f)
 		if t == nil {
 			// Not a unit type, ignore
 			return nil
+		}
+
+		// Check for X containing *X as field
+		if equalsType(t, unit.Type()) {
+			return errCircularReference
 		}
 
 		// Create a zero-valued unit
@@ -167,6 +182,8 @@ func (g *Graph) do(fn string, unit reflect.Value, args []reflect.Value, seen map
 		t := g.unitTypeForField(f)
 		if t == nil {
 			return nil
+		} else if equalsType(t, unit.Type()) {
+			return errCircularReference
 		} else if _, exists := seen[t]; exists {
 			return nil
 		} else if err := g.do(fn, g.units[t], args, seen, false); err != nil {

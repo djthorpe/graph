@@ -21,7 +21,6 @@ var (
 // equalsType returns true if two types are equivalent
 func equalsType(a, b reflect.Type) bool {
 	return a == b
-	//	return a.Name() == b.Name() && a.PkgPath() == b.PkgPath()
 }
 
 // isStructPtr returns true if the type is a pointer to a struct

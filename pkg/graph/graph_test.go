@@ -204,6 +204,10 @@ func Test_Graph_003(t *testing.T) {
 		a *A
 		b *B
 	}
+	type X struct {
+		graph.Unit
+		*X // Circular reference
+	}
 
 	if g := pkg.New(pkg.RunWait, new(A)); g == nil {
 		t.Error("Expected non-nil return")
@@ -213,6 +217,9 @@ func Test_Graph_003(t *testing.T) {
 		t.Error("Expected non-nil return")
 	} else if b.A == nil {
 		t.Error("Expected non-nil A")
+	}
+	if g := pkg.New(pkg.RunWait, &X{}); g != nil {
+		t.Error("Expected nil X")
 	}
 }
 
