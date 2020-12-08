@@ -15,7 +15,7 @@ This module for __Go__  provides one implementation of such magic, with the foll
 
 The __Graph__ module provides a programming pattern which aims to target the
 best features of __Go__ (channels, goroutines and composition for example)
-and simplify complex application development.
+to simplify complex application development.
 
 ## Dependency Injection
 

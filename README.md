@@ -15,7 +15,7 @@ This module for __Go__  provides one implementation of such magic, with the foll
 
 The __Graph__ module provides a programming pattern which aims to target the
 best features of __Go__ (channels, goroutines and composition for example)
-and simplify complex application development.
+to simplify complex application development.
 
 ## Installing
 
@@ -30,15 +30,37 @@ import (
   pkg "github.com/djthorpe/graph/pkg/graph"
   tool "github.com/djthorpe/graph/pkg/tool"
 )
+
+func init() {
+  // Register myUnit as implementation of exported MyInterface
+  graph.RegisterUnit(
+      reflect.TypeOf(&myUnit{}), 
+      reflect.TypeOf((*MyInterface)(nil))
+  )
+}
+
+type MyInterface interface {
+  // ... interface definition
+}
+
+type myUnit struct {
+  graph.Unit
+  graph.Events // Inject event pubsub dependency
+  // ... other dependencies injected here
+}
 ```
 
-## Docuemntation
+## Documentation
 
-  * [Guide](docs)
+More information on usage of __Graph__ is provided in the following documentation:
+
+  * [Guide](blob/main/doc/README.md)
+  * [Examples of Graph usage](blob/main/doc/examples.md)
+  * [pkg.go.dev](https://pkg.go.dev/github.com/djthorpe/graph)
 
 ## Project Status
 
-This module is currently __in development__.
+This module is currently __in development__ but is mostly feature-complete.
 
 ## Community
 
