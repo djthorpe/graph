@@ -19,20 +19,41 @@ to simplify complex application development.
 
 ## Installing
 
-To use __Graph__ just import the definitions and either the package which creates graphs
-or the tools which provide lifecycle management:
+To use __Graph__ just import the definitions to create a __Unit__, an instance which can
+be used in dependency injection. Mark any __Unit__ with an anonymous `graph.Unit` field.
+For example, `mymodule.MyInterface` can be injected into an application shell tool:
 
 ```go
 package main
 
 import (
   graph "github.com/djthorpe/graph"
-  pkg "github.com/djthorpe/graph/pkg/graph"
   tool "github.com/djthorpe/graph/pkg/tool"
+  mymodule
+)
+
+type App struct {
+  graph.Unit
+  mymodule.MyInterface
+}
+
+func main() {
+  tool.Shelltool(context.WithCancel(/* ... */),"myapp",os.Args[1:],new(App))
+}
+```
+
+You can map an interface to an implementation and define the __Unit__ lifecycle:
+
+```go
+package mymodule
+
+import (
+  graph "github.com/djthorpe/graph"
+  "reflect"
 )
 
 func init() {
-  // Register myUnit as implementation of exported MyInterface
+  // Register mymodule.myUnit as implementation of exported mymodule.MyInterface
   graph.RegisterUnit(
       reflect.TypeOf(&myUnit{}), 
       reflect.TypeOf((*MyInterface)(nil))
@@ -48,7 +69,22 @@ type myUnit struct {
   graph.Events // Inject event pubsub dependency
   // ... other dependencies injected here
 }
+
+// New, Run and Dispose define the lifecycle
+func (*myUnit) New(graph.State) error {
+  // ...Initialize myUnit
+}
+
+func (*myUnit) Run(context.Context) error {
+  // ...Run myUnit until cancel or deadline exceeded
+}
+
+func (*myUnit) Dispose() error {
+  // ...Dispose of any resources used by myUnit
+}
 ```
+
+Then you can inject myUnit into your application, for example:
 
 ## Documentation
 
