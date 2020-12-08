@@ -17,7 +17,7 @@ The __Graph__ module provides a programming pattern which aims to target the
 best features of __Go__ (channels, goroutines and composition for example)
 to simplify complex application development.
 
-## Installing
+## Installing & Using
 
 To use __Graph__ just import the definitions to create a __Unit__, an instance which can
 be used in dependency injection. Mark any __Unit__ with an anonymous `graph.Unit` field.
@@ -29,7 +29,7 @@ package main
 import (
   graph "github.com/djthorpe/graph"
   tool "github.com/djthorpe/graph/pkg/tool"
-  mymodule
+  "mymodule"
 )
 
 type App struct {
@@ -42,7 +42,8 @@ func main() {
 }
 ```
 
-You can map an interface to an implementation and define the __Unit__ lifecycle:
+Here is the implementation of the interface, and definition of the
+lifecycle:
 
 ```go
 package mymodule
