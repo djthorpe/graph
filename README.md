@@ -102,6 +102,5 @@ This module is currently __in development__ but is mostly feature-complete.
 ## Community
 
   * [File an issue or question](http://github.com/djthorpe/graph/issues) on github.
-  * Licensed under Apache 2.0, please read that license about using and forking __Graph__.
-    Essentially, you are free to use in all circumstances as long as credit is provided.
+  * Licensed under Apache 2.0, please read that license about using and forking __Graph__. The main conditions require preservation of copyright and license notices. Contributors provide an express grant of patent rights. Licensed works, modifications, and larger works may be distributed under different terms and without source code.
 
