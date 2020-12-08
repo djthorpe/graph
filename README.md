@@ -42,12 +42,12 @@ func main() {
 }
 ```
 
-The _magic_ here is that `MyInterface` is created without further code, and according
-to the lifecycle can resolve its' own dependencies and even run background tasks.
-When it terminates it can also dispose of any used resources.
+The _magic_ here is that the `MyInterface` dependency is satisifed without further 
+code, and according to the lifecycle can resolve its' own dependencies and even 
+run background tasks. When it terminates it can also dispose of any used resources.
 
-Less magically, here is the implementation of the interface, and definition of the
-lifecycle:
+Somewhat less magically, here is the implementation of the interface, and definition
+of the lifecycle:
 
 ```go
 package mymodule
