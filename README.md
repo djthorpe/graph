@@ -1,7 +1,7 @@
 
 # Graph: Dependency and Lifecycle Management
 
-[![CircleCI](https://circleci.com/gh/djthorpe/graph.svg?style=sheild)](https://app.circleci.com/pipelines/github/djthorpe/graph)
+[![CircleCI](https://circleci.com/gh/djthorpe/graph.svg?style=svg)](https://app.circleci.com/pipelines/github/djthorpe/graph)
 
 [Dependency injection](https://en.wikipedia.org/wiki/Dependency_injection) is a technique
 to "magically" satisfy _dependencies_ within an application, reducing the mental overhead for programmer and ensuring the dependencies remain _loosely coupled_.
