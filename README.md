@@ -91,8 +91,8 @@ units, testing and so forth is provided in the documentation.
 
 More information on usage of __Graph__ is provided in the following documentation:
 
-  * [Guide](blob/main/doc/README.md)
-  * [Examples of Graph usage](blob/main/doc/examples.md)
+  * [Guide](doc/README.md)
+  * [Examples of Graph usage](doc/examples.md)
   * [pkg.go.dev documentation](https://pkg.go.dev/github.com/djthorpe/graph)
 
 ## Project Status
