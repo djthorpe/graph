@@ -49,7 +49,7 @@ func (this *E) Run(ctx context.Context) error {
 
 func Test_Events_001(t *testing.T) {
 	e := new(E)
-	if g := pkg.New(pkg.RunWait, e); g == nil {
+	if g := pkg.New(e); g == nil {
 		t.Error("Expected non-nil return")
 	}
 	if e.Events == nil {
@@ -59,7 +59,7 @@ func Test_Events_001(t *testing.T) {
 
 func Test_Events_002(t *testing.T) {
 	e := new(E)
-	g, s := pkg.New(pkg.RunWait, e), NewState(t)
+	g, s := pkg.New(e), NewState(t)
 	if g == nil {
 		t.Error("Expected non-nil return")
 	}
@@ -83,7 +83,7 @@ func Test_Events_002(t *testing.T) {
 
 func Test_Events_003(t *testing.T) {
 	e1, e2 := new(E), new(E)
-	g, s := pkg.New(pkg.RunWait, e1, e2), NewState(t)
+	g, s := pkg.New(e1, e2), NewState(t)
 	if g == nil {
 		t.Error("Expected non-nil return")
 	}
@@ -102,5 +102,4 @@ func Test_Events_003(t *testing.T) {
 	} else if err := g.Dispose(); err != nil {
 		t.Error(err)
 	}
-
 }

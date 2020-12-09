@@ -3,6 +3,7 @@ package graph
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -16,7 +17,7 @@ import (
 type Graph struct {
 	sync.RWMutex
 
-	policy RunPolicy
+	policy runPolicy
 	objs   []reflect.Value
 	units  map[reflect.Type]reflect.Value
 }
@@ -26,16 +27,63 @@ type Graph struct {
 
 var (
 	errCircularReference = errors.New("Circular Reference")
+	errUnassignableField = errors.New("Unassignable (private) Field")
 )
 
 /////////////////////////////////////////////////////////////////////
-// PUBLIC METHODS
+// NEW
 
 // New returns a new graph object with "root" objects
 // which are used to create the graph of dependencies. Returns
-// nil if any object is not a graph.Unit
-func New(policy RunPolicy, objs ...interface{}) graph.Graph {
-	g := new(Graph)
+// nil if any object is not a graph.Unit. Run policy termination
+// set to "Wait" (this is the default)
+func New(objs ...interface{}) graph.Graph {
+	if g := new(Graph).new(runWait, objs); g != nil {
+		return g
+	} else {
+		return nil
+	}
+}
+
+// NewAll returns a new graph object with "root" objects
+// which are used to create the graph of dependencies. Returns
+// nil if any object is not a graph.Unit. Run policy termination
+// set to "All"
+func NewAll(objs ...interface{}) graph.Graph {
+	if g := new(Graph).new(runAll, objs); g != nil {
+		return g
+	} else {
+		return nil
+	}
+}
+
+// NewAny returns a new graph object with "root" objects
+// which are used to create the graph of dependencies. Returns
+// nil if any object is not a graph.Unit. Run policy termination
+// set to "Any"
+func NewAny(objs ...interface{}) graph.Graph {
+	if g := new(Graph).new(runAny, objs); g != nil {
+		return g
+	} else {
+		return nil
+	}
+}
+
+// NewWait returns a new graph object with "root" objects
+// which are used to create the graph of dependencies. Returns
+// nil if any object is not a graph.Unit. Run policy termination
+// set to "Wait"
+func NewWait(objs ...interface{}) graph.Graph {
+	if g := new(Graph).new(runWait, objs); g != nil {
+		return g
+	} else {
+		return nil
+	}
+}
+
+// Private new method which walks the dependencies and creates
+// zero-valued fields
+func (g *Graph) new(policy runPolicy, objs []interface{}) *Graph {
 	g.policy = policy
 	g.objs = make([]reflect.Value, len(objs))
 	g.units = make(map[reflect.Type]reflect.Value, len(objs)*4) // Arbitary assumption on number of units per object
@@ -54,6 +102,9 @@ func New(policy RunPolicy, objs ...interface{}) graph.Graph {
 
 	return g
 }
+
+/////////////////////////////////////////////////////////////////////
+// LIFECYCLE
 
 // Define passes state into each zero-valued unit and ensure the calls
 // are done with leaf units first. Define is called on any unit only once.
@@ -119,7 +170,7 @@ func (g *Graph) Run(ctx context.Context) error {
 	defer g.RWMutex.Unlock()
 
 	// Make context object with parent context
-	root := NewContext(ctx, g.policy)
+	root := newContext(ctx, g.policy)
 
 	// Call run functions
 	seen := make(map[reflect.Type]bool, len(g.units))
@@ -149,6 +200,11 @@ func (g *Graph) graph(unit reflect.Value) error {
 		// Check for X containing *X as field
 		if equalsType(t, unit.Type()) {
 			return errCircularReference
+		}
+
+		// Field must be public to be assignable
+		if isPrivateField(f) {
+			return fmt.Errorf("%w: %q of %q", errUnassignableField, f.Name, unit.Type())
 		}
 
 		// Create a zero-valued unit
@@ -202,7 +258,7 @@ func (g *Graph) do(fn string, unit reflect.Value, args []reflect.Value, seen map
 			result = multierror.Append(result, err)
 		}
 	case "Run":
-		args[0].Interface().(*Context).Run(unit, obj)
+		args[0].Interface().(*runContext).Run(unit, obj)
 	}
 
 	// Mark this unit as 'seen'

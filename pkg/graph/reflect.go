@@ -3,6 +3,7 @@ package graph
 import (
 	"fmt"
 	"reflect"
+	"unicode"
 
 	"github.com/djthorpe/graph"
 	"github.com/hashicorp/go-multierror"
@@ -21,6 +22,12 @@ var (
 // equalsType returns true if two types are equivalent
 func equalsType(a, b reflect.Type) bool {
 	return a == b
+}
+
+// isPrivateField returns true if a struct field is not exported
+func isPrivateField(f reflect.StructField) bool {
+	r := []rune(f.Name)[0]
+	return unicode.IsUpper(r) == false
 }
 
 // isStructPtr returns true if the type is a pointer to a struct

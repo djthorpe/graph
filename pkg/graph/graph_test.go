@@ -3,7 +3,7 @@ package graph_test
 import (
 	"context"
 	"errors"
-	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,6 +16,7 @@ import (
 
 type state struct {
 	*testing.T
+	sync.RWMutex
 
 	value string
 }
@@ -29,12 +30,18 @@ func (s *state) Name() string {
 	return s.Name()
 }
 func (s *state) Value() interface{} {
+	s.RWMutex.RLock()
+	defer s.RWMutex.RUnlock()
 	return s.value
 }
 func (s *state) Add(value string) {
+	s.RWMutex.Lock()
+	defer s.RWMutex.Unlock()
 	s.value += value
 }
 func (s *state) Equals(value string) bool {
+	s.RWMutex.RLock()
+	defer s.RWMutex.RUnlock()
 	return s.value == value
 }
 
@@ -81,7 +88,8 @@ func (this *A) Dispose() error {
 
 func (this *A) Run(context.Context) error {
 	this.state.Log("Called Run on A (immediately returns)")
-	this.state.Add("A")
+	this.state.Add("a")
+	this.state.Log("A Run done")
 	return nil
 }
 
@@ -99,9 +107,8 @@ func (*B) New(s *state) error {
 func (this *B) Run(ctx context.Context) error {
 	this.state.Log("Called Run on B (waits for done)")
 	<-ctx.Done()
-	fmt.Println("B is done")
 	this.state.Log("B Run done")
-	this.state.Add("B")
+	this.state.Add("b")
 	return nil
 }
 
@@ -125,7 +132,7 @@ func (this *C) Dispose() error {
 
 func (this *C) Run(context.Context) error {
 	this.state.Log("Called Run on C (returns an error)")
-	this.state.Add("C")
+	this.state.Add("c")
 	return errors.New("Error from C")
 }
 
@@ -143,13 +150,15 @@ func (this *D) Dispose() error {
 
 func (this *D) Run(ctx context.Context) error {
 	this.state.Log("Called Run on D (returns after one second)")
-	this.state.Add("D")
+	this.state.Add("d")
 	select {
 	case <-ctx.Done():
-		fmt.Println("ctxdone")
+		this.Log("D ctx done")
 	case <-time.After(time.Second):
-		fmt.Println("ticker done")
+		this.Log("D ticker done")
 	}
+
+	// Return any errors
 	return ctx.Err()
 }
 
@@ -161,16 +170,16 @@ func Test_Graph_001(t *testing.T) {
 	type TestUnit struct{ graph.Unit }
 	type TestNamedUnit struct{ named graph.Unit }
 
-	if g := pkg.New(pkg.RunWait); g == nil {
+	if g := pkg.New(); g == nil {
 		t.Error("Expected non-nil return")
 	}
-	if g := pkg.New(pkg.RunWait, &TestNotUnit{}); g != nil {
+	if g := pkg.New(&TestNotUnit{}); g != nil {
 		t.Error("Expected nil return")
 	}
-	if g := pkg.New(pkg.RunWait, &TestUnit{}); g == nil {
+	if g := pkg.New(&TestUnit{}); g == nil {
 		t.Error("Expected non-nil return")
 	}
-	if g := pkg.New(pkg.RunWait, &TestNamedUnit{}); g != nil {
+	if g := pkg.New(&TestNamedUnit{}); g != nil {
 		t.Error("Expected nil return")
 	}
 }
@@ -182,11 +191,11 @@ func Test_Graph_002(t *testing.T) {
 		*A
 	}
 
-	if g := pkg.New(pkg.RunWait, new(A)); g == nil {
+	if g := pkg.New(new(A)); g == nil {
 		t.Error("Expected non-nil return")
 	}
 	b := new(B)
-	if g := pkg.New(pkg.RunWait, b); g == nil {
+	if g := pkg.New(b); g == nil {
 		t.Error("Expected non-nil return")
 	} else if b.A == nil {
 		t.Error("Expected non-nil A")
@@ -201,30 +210,45 @@ func Test_Graph_003(t *testing.T) {
 	}
 	type C struct {
 		graph.Unit
-		a *A
-		b *B
+		*A
+		*B
 	}
 	type X struct {
 		graph.Unit
 		*X // Circular reference
 	}
 
-	if g := pkg.New(pkg.RunWait, new(A)); g == nil {
+	if g := pkg.New(new(A)); g == nil {
 		t.Error("Expected non-nil return")
 	}
+
 	b := new(B)
-	if g := pkg.New(pkg.RunWait, b); g == nil {
+	if g := pkg.New(b); g == nil {
 		t.Error("Expected non-nil return")
 	} else if b.A == nil {
 		t.Error("Expected non-nil A")
 	}
-	if g := pkg.New(pkg.RunWait, &X{}); g != nil {
-		t.Error("Expected nil X")
+
+	c := new(C)
+	if g := pkg.New(c); g == nil {
+		t.Error("Expected non-nil return")
+	} else if c.A == nil {
+		t.Error("Expected non-nil A")
+	} else if c.B == nil {
+		t.Error("Expected non-nil B")
+	} else if c.B.A == nil {
+		t.Error("Expected non-nil A in B")
+	} else if c.A != c.B.A {
+		t.Error("Expected A to be identical in C and B")
+	}
+
+	if g := pkg.New(&X{}); g != nil {
+		t.Error("Expected nil X due to circular references", g, g == nil)
 	}
 }
 
 func Test_Graph_004(t *testing.T) {
-	g := pkg.New(pkg.RunWait, new(B))
+	g := pkg.New(new(B))
 	if g == nil {
 		t.Error("Expected non-nil return")
 	}
@@ -236,7 +260,7 @@ func Test_Graph_004(t *testing.T) {
 }
 
 func Test_Graph_005(t *testing.T) {
-	g := pkg.New(pkg.RunWait, new(B))
+	g := pkg.New(new(B))
 	if g == nil {
 		t.Error("Expected non-nil return")
 	}
@@ -251,7 +275,7 @@ func Test_Graph_005(t *testing.T) {
 }
 
 func Test_Graph_006(t *testing.T) {
-	g := pkg.New(pkg.RunWait, new(B))
+	g := pkg.New(new(B))
 	if g == nil {
 		t.Error("Expected non-nil return")
 	}
@@ -270,7 +294,7 @@ func Test_Graph_006(t *testing.T) {
 
 func Test_Graph_007(t *testing.T) {
 	// A <- B <- C
-	g := pkg.New(pkg.RunWait, new(B), new(C))
+	g := pkg.New(new(B), new(C))
 	state := NewState(t)
 
 	if err := g.New(state); err != nil {
@@ -283,7 +307,7 @@ func Test_Graph_007(t *testing.T) {
 
 func Test_Graph_008(t *testing.T) {
 	// A <- B <- C for first two objects and then A
-	g := pkg.New(pkg.RunWait, new(B), new(C), new(A))
+	g := pkg.New(new(B), new(C), new(A))
 	state := NewState(t)
 
 	if err := g.New(state); err != nil {
@@ -296,7 +320,7 @@ func Test_Graph_008(t *testing.T) {
 
 func Test_Graph_009(t *testing.T) {
 	// A <- B
-	g := pkg.New(pkg.RunWait, new(B))
+	g := pkg.New(new(B))
 	state := NewState(t)
 
 	if err := g.New(state); err != nil {
@@ -316,16 +340,13 @@ func Test_Graph_009(t *testing.T) {
 	}
 
 	// B waits to end so A should end running first, order should be AB
-	if state.Equals("ABAB") == false {
-		t.Error("Unexpected New call order:", state.Value(), "...expected:", "ABAB")
+	if state.Equals("ABab") == false {
+		t.Error("Unexpected New call order:", state.Value(), "...expected:", "ABab")
 	}
 }
 
 func Test_Graph_010(t *testing.T) {
-	// A
-	g := pkg.New(pkg.RunAll, new(A))
-	state := NewState(t)
-
+	g, state := pkg.NewAll(new(A)), NewState(t)
 	if err := g.New(state); err != nil {
 		t.Error(err)
 	}
@@ -345,10 +366,7 @@ func Test_Graph_010(t *testing.T) {
 }
 
 func Test_Graph_011(t *testing.T) {
-	// A
-	g := pkg.New(pkg.RunAny, new(A))
-	state := NewState(t)
-
+	g, state := pkg.NewAny(new(A)), NewState(t)
 	if err := g.New(state); err != nil {
 		t.Error(err)
 	}
@@ -368,16 +386,53 @@ func Test_Graph_011(t *testing.T) {
 }
 
 func Test_Graph_012(t *testing.T) {
-	// A <- B <- D
-	g := pkg.New(pkg.RunAny, new(D), new(D))
-	state := NewState(t)
-
+	g, state := pkg.NewAll(new(D), new(D)), NewState(t)
 	if err := g.New(state); err != nil {
 		t.Error(err)
 	}
 
-	// Start running, returns after either D ends
-	if err := g.Run(context.Background()); err != nil && err != context.DeadlineExceeded {
+	// Start running, returns after either D ends, which both end after
+	// one second
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Wait for 3 secs (should end anyway after one second)
+	now := time.Now()
+	if err := g.Run(ctx); err != nil && err != context.DeadlineExceeded {
 		t.Error(err)
 	}
+	if time.Since(now) < time.Second || time.Since(now) > 2*time.Second {
+		t.Error("Run did not return after one second")
+	}
+	// Run will complete randomly for A and D
+	ok := state.Equals("ABDDaddb") || state.Equals("ABDDdadb") || state.Equals("ABDDddab")
+	if ok == false {
+		t.Error("Unexpected New call order:", state.Value(), "...expected:", "ABDDxxxB")
+	}
+}
+
+func Test_Graph_013(t *testing.T) {
+	g, state := pkg.NewAny(new(D), new(D)), NewState(t)
+	if err := g.New(state); err != nil {
+		t.Error(err)
+	}
+
+	// Any should be the same as All in this example since both D's end together
+	// but one D (and B) will get a cancel at some unspecified time so the result
+	// could be either ABDDADDB or ABDDADBD
+
+	// Start running, returns after either D ends, which both end after
+	// one second
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// Wait for 3 secs (should end anyway after one second)
+	now := time.Now()
+	if err := g.Run(ctx); err != nil && err != context.DeadlineExceeded && err != context.Canceled {
+		t.Error(err)
+	}
+	if time.Since(now) < time.Second || time.Since(now) > 2*time.Second {
+		t.Error("Run did not return after one second")
+	}
+	// TODO
 }

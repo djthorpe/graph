@@ -13,11 +13,11 @@ import (
 /////////////////////////////////////////////////////////////////////
 // TYPES
 
-type Context struct {
+type runContext struct {
 	sync.Mutex
 	sync.WaitGroup
 
-	policy  RunPolicy
+	policy  runPolicy
 	cancels []context.CancelFunc // Holds cancel functions for any running goroutine
 	errs    chan *result         // Channel for return values after Run completes
 	objs    *counter             // Reference counter for (root) object completion
@@ -32,22 +32,22 @@ type Context struct {
 // RunPolicy determines how the graph.Run method completes. It will
 // either complete based on parent context, or when all "objects"
 // have completed, or when any "object" completes.
-type RunPolicy int
+type runPolicy int
 
 const (
-	// RunWait is a policy which terminates when parent context is done
-	RunWait RunPolicy = iota
-	// RunAny policy terminates when ANY obj Run goroutines end
-	RunAny
-	// RunAll policy terminates when ALL obj Run goroutines end
-	RunAll
+	// runWait is a policy which terminates when parent context is done
+	runWait runPolicy = iota
+	// runAny policy terminates when ANY obj Run goroutines end
+	runAny
+	// runAll policy terminates when ALL obj Run goroutines end
+	runAll
 )
 
 /////////////////////////////////////////////////////////////////////
 // NEW
 
-func NewContext(parent context.Context, policy RunPolicy) *Context {
-	c := new(Context)
+func newContext(parent context.Context, policy runPolicy) *runContext {
+	c := new(runContext)
 	c.done, c.reason = make(chan struct{}), make(chan struct{})
 	c.errs = make(chan *result)
 	c.objs = NewCounter()
@@ -66,12 +66,14 @@ func NewContext(parent context.Context, policy RunPolicy) *Context {
 			// End reason is due to policy
 			break
 		}
+		fmt.Println("GOT END REASON")
 		// Send cancels to children
 		for _, cancel := range c.cancels {
 			cancel()
 		}
 		// Wait for children to have terminated, close channels
 		c.WaitGroup.Wait()
+		fmt.Println("FINISHED RUN")
 		close(c.errs)
 		close(c.done)
 	}()
@@ -82,7 +84,7 @@ func NewContext(parent context.Context, policy RunPolicy) *Context {
 /////////////////////////////////////////////////////////////////////
 // PUBLIC METHODS
 
-func (c *Context) Run(unit reflect.Value, obj bool) {
+func (c *runContext) Run(unit reflect.Value, obj bool) {
 	c.Mutex.Lock()
 	defer c.Mutex.Unlock()
 
@@ -99,52 +101,71 @@ func (c *Context) Run(unit reflect.Value, obj bool) {
 	go func() {
 		defer c.WaitGroup.Done()
 		err := newResult(call("Run", unit, []reflect.Value{reflect.ValueOf(child)}), obj)
-		fmt.Println("-> ERR")
 		c.errs <- err
-		fmt.Println("<- ERR")
 	}()
 }
 
 /////////////////////////////////////////////////////////////////////
 // context.Context INTERFACE IMPLEMENTATION
 
-func (c *Context) Deadline() (deadline time.Time, ok bool) {
+func (c *runContext) Deadline() (deadline time.Time, ok bool) {
 	return time.Time{}, false
 }
 
-func (c *Context) Done() <-chan struct{} {
+func (c *runContext) Done() <-chan struct{} {
 	c.Mutex.Lock()
 	defer c.Mutex.Unlock()
 
 	// Collect errors returned by Run calls
 	go func() {
+		var wg sync.WaitGroup
 		for err := range c.errs {
 			// Decrement counter if an object ended
 			c.objs.Dec(err.Obj())
 
-			// Check Run terminate policy
-			switch c.policy {
-			case RunAny:
-				if err.Obj() {
-					c.reason <- struct{}{}
+			// Evaluate terminate policy (in separate goroutine)
+			wg.Add(1)
+			go func(err *result) {
+				defer wg.Done()
+				switch c.policy {
+				case runAny:
+					if err.Obj() {
+						c.reason <- struct{}{}
+					}
+				case runAll:
+					if err.Obj() && c.objs.IsZero() {
+						c.reason <- struct{}{}
+					}
 				}
-			case RunAll:
-				if err.Obj() && c.objs.IsZero() {
-					c.reason <- struct{}{}
-				}
-			}
+			}(err)
 
 			// Append any error
 			if err.IsErr() {
 				c.result = multierror.Append(c.result, err.Unwrap())
 			}
 		}
+		// Wait until policy evaluation has completed before
+		// closing channels
+		wg.Wait()
 		close(c.reason)
 	}()
 
 	return c.done
 }
 
-func (c *Context) Err() error {
+func (c *runContext) Err() error {
+	// Return no-error
+	if c.result == nil {
+		return nil
+	}
+	// Unwrap error
+	if err, ok := c.result.(*multierror.Error); ok {
+		if len(err.Errors) == 0 {
+			return nil
+		} else if len(err.Errors) == 1 {
+			return err.Errors[0]
+		}
+	}
+	// Return standard error
 	return c.result
 }
