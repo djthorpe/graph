@@ -15,7 +15,7 @@ func Test(t *testing.T, args []string, obj interface{}, fn TestFunc) {
 	var result error
 
 	// Create graph and state
-	g, flagset := pkg.New(pkg.RunWait, obj), NewFlagset(t.Name())
+	g, flagset := pkg.New(obj), NewFlagset(t.Name())
 	if g == nil || flagset == nil {
 		t.Fatal("New() failed")
 	}
@@ -49,6 +49,9 @@ func Test(t *testing.T, args []string, obj interface{}, fn TestFunc) {
 
 	// Call unit test
 	fn(obj)
+
+	// Wait for run and dispose to end
+	wg.Wait()
 
 	// Check any errors
 	if result != nil {

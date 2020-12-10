@@ -13,7 +13,7 @@ func ShellTool(ctx context.Context, name string, args []string, objs ...interfac
 	var result error
 
 	// Create graph and state
-	g, flagset := pkg.New(pkg.RunAll, objs...), NewFlagset(name)
+	g, flagset := pkg.NewAny(objs...), NewFlagset(name)
 	if g == nil || flagset == nil {
 		return errors.New("New() failed")
 	}

@@ -58,8 +58,7 @@ func Test_Events_001(t *testing.T) {
 }
 
 func Test_Events_002(t *testing.T) {
-	e := new(E)
-	g, s := pkg.New(e), NewState(t)
+	g, s := pkg.New(&E{}), NewState(t)
 	if g == nil {
 		t.Error("Expected non-nil return")
 	}
@@ -82,8 +81,7 @@ func Test_Events_002(t *testing.T) {
 }
 
 func Test_Events_003(t *testing.T) {
-	e1, e2 := new(E), new(E)
-	g, s := pkg.New(e1, e2), NewState(t)
+	g, s := pkg.New(&E{}, &E{}), NewState(t)
 	if g == nil {
 		t.Error("Expected non-nil return")
 	}
