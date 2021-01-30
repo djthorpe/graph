@@ -2,6 +2,7 @@ package graph
 
 import (
 	"context"
+	"testing"
 )
 
 /////////////////////////////////////////////////////////////////////
@@ -32,6 +33,18 @@ type Events interface {
 	Unsubscribe(<-chan State)
 }
 
+// Logger provides a simple interface for logging to stderr
+type Logger interface {
+	Print(...interface{})          // Print output logging to stderr
+	Debug(...interface{})          // Print output logging to stderr when debugging
+	Printf(string, ...interface{}) // Print formatted logging to stderr
+	Debugf(string, ...interface{}) // Print formatted logging to stderr when debugging
+
+	IsDebug() bool      // IsDebug returns true if debug flag is set
+	Test() *testing.T   // Test returns testing context when in a unit test
+	SetTest(*testing.T) // SetTest will set debug to true and if provided the test context
+}
+
 /////////////////////////////////////////////////////////////////////
 // UNITS
 
@@ -47,7 +60,7 @@ type Events interface {
 type Unit struct{}
 
 // No-op default functions for lifecycle
-func (this *Unit) Define(State)              { /* NOOP */ }
-func (this *Unit) New(State) error           { /* NOOP */ return nil }
-func (this *Unit) Run(context.Context) error { /* NOOP */ return nil }
-func (this *Unit) Dispose() error            { /* NOOP */ return nil }
+func (*Unit) Define(State)              { /* NOOP */ }
+func (*Unit) New(State) error           { /* NOOP */ return nil }
+func (*Unit) Run(context.Context) error { /* NOOP */ return nil }
+func (*Unit) Dispose() error            { /* NOOP */ return nil }

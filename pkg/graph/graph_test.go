@@ -346,7 +346,7 @@ func Test_Graph_009(t *testing.T) {
 }
 
 func Test_Graph_010(t *testing.T) {
-	g, state := pkg.NewAll(new(A)), NewState(t)
+	g, state := pkg.New(new(A)), NewState(t)
 	if err := g.New(state); err != nil {
 		t.Error(err)
 	}
@@ -366,7 +366,7 @@ func Test_Graph_010(t *testing.T) {
 }
 
 func Test_Graph_011(t *testing.T) {
-	g, state := pkg.NewAny(new(A)), NewState(t)
+	g, state := pkg.New(new(A)), NewState(t)
 	if err := g.New(state); err != nil {
 		t.Error(err)
 	}
@@ -386,7 +386,7 @@ func Test_Graph_011(t *testing.T) {
 }
 
 func Test_Graph_012(t *testing.T) {
-	g, state := pkg.NewAll(new(D), new(D)), NewState(t)
+	g, state := pkg.New(new(D), new(D)), NewState(t)
 	if err := g.New(state); err != nil {
 		t.Error(err)
 	}
@@ -409,30 +409,4 @@ func Test_Graph_012(t *testing.T) {
 	if ok == false {
 		t.Error("Unexpected New call order:", state.Value(), "...expected:", "ABDDxxxB")
 	}
-}
-
-func Test_Graph_013(t *testing.T) {
-	g, state := pkg.NewAny(new(D), new(D)), NewState(t)
-	if err := g.New(state); err != nil {
-		t.Error(err)
-	}
-
-	// Any should be the same as All in this example since both D's end together
-	// but one D (and B) will get a cancel at some unspecified time so the result
-	// could be either ABDDADDB or ABDDADBD
-
-	// Start running, returns after either D ends, which both end after
-	// one second
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	// Wait for 3 secs (should end anyway after one second)
-	now := time.Now()
-	if err := g.Run(ctx); err != nil && err != context.DeadlineExceeded && err != context.Canceled {
-		t.Error(err)
-	}
-	if time.Since(now) < time.Second || time.Since(now) > 2*time.Second {
-		t.Error("Run did not return after one second")
-	}
-	// TODO
 }

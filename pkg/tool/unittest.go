@@ -2,6 +2,7 @@ package tool
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -11,20 +12,25 @@ import (
 
 type TestFunc func(interface{})
 
-func Test(t *testing.T, args []string, obj interface{}, fn TestFunc) {
-	var result error
-
+func Test(t *testing.T, args []string, obj, fn interface{}) {
 	// Create graph and state
 	g, flagset := pkg.New(obj), NewFlagset(t.Name())
 	if g == nil || flagset == nil {
 		t.Fatal("New() failed")
 	}
 
-	// Lifecycle: define->parse->new
+	// Lifecycle: define->parse
 	g.Define(flagset)
-	if err := flagset.Parse(args[1:]); err != nil {
+	if err := flagset.Parse(args); err != nil {
 		t.Fatal(err)
 	}
+
+	// Set debug mode
+	if logger := g.(*pkg.Graph).Logger(); logger != nil {
+		logger.SetTest(t)
+	}
+
+	// Lifecycle: new
 	if err := g.New(flagset); err != nil {
 		t.Fatal(err)
 	}
@@ -34,6 +40,7 @@ func Test(t *testing.T, args []string, obj interface{}, fn TestFunc) {
 	defer cancel()
 
 	// Call run and dispose in goroutine
+	var result error
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -48,7 +55,11 @@ func Test(t *testing.T, args []string, obj interface{}, fn TestFunc) {
 	}()
 
 	// Call unit test
-	fn(obj)
+	if fn_ := reflect.ValueOf(fn); fn_.Kind() != reflect.Func {
+		t.Fatal("Invalid test function")
+	} else {
+		fn_.Call([]reflect.Value{reflect.ValueOf(obj)})
+	}
 
 	// Wait for run and dispose to end
 	wg.Wait()

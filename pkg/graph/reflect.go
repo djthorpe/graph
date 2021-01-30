@@ -14,6 +14,7 @@ import (
 
 var (
 	unitType = reflect.TypeOf((*graph.Unit)(nil)).Elem()
+	logType  = reflect.TypeOf((*graph.Logger)(nil)).Elem()
 )
 
 /////////////////////////////////////////////////////////////////////
